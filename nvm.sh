@@ -1741,6 +1741,24 @@ nvm_print_versions() {
 function alen(arr, i, len) { len=0; for(i in arr) len++; return len; }
 function v2a(v, a) { sub(/^(iojs-)?v/, "", v); split(v, a, "."); }
 function vcmp(v1,v2,a1,a2,i,d) { v2a(v1,a1); v2a(v2,a2); for(i=1;i<4;i++) { d = a1[i] - a2[i]; if(d!=0) return d; } return 0; }
+function bsch(ary,len,ver,low,mid,high,fields) {
+  low = 1; high = len;
+  while (low < high) {
+    mid = int((low + high) / 2);
+    split(ary[mid], fields, "[[:blank:]]+");
+    if (mid == low || vcmp(fields[1], ver) == 0 ) break;
+    if (vcmp(fields[1], ver) < 0 ) low = mid + 1;
+    else high = mid - 1;
+  }
+
+  split(ary[low], fields, "[[:blank:]]+");
+  if (vcmp(fields[1], ver) >= 0 ) return low;
+  split(ary[high], fields, "[[:blank:]]+");
+  if (vcmp(fields[1], ver) < 0 ) return high + 1;
+  split(ary[mid], fields, "[[:blank:]]+");
+  if (vcmp(fields[1], ver) < 0 ) return mid + 1;
+  return mid;
+}
 BEGIN {
   fmt_installed = has_colors ? (installed_color ? "\033[" installed_color "%15s\033[0m" : "%15s") : "%15s *";
   fmt_system = has_colors ? (system_color ? "\033[" system_color "%15s\033[0m" : "%15s") : "%15s *";
@@ -1755,7 +1773,7 @@ BEGIN {
   split(remote_versions, lines, "|");
   split(installed_versions, installed, "|");
   rows = alen(lines);
-  filter_on = (vcmp("v0.0.0", min_ver) != 0);
+  first = bsch(lines, rows, min_ver);
   for (m = n = 1; n <= rows; n++) {
     split(lines[n], fields, "[[:blank:]]+");
     cols = alen(fields);
@@ -1768,13 +1786,7 @@ BEGIN {
       }
     }
 
-    if (filter_on && !is_installed) {
-      if (vcmp(version, min_ver) >= 0) {
-        filter_on = 0;
-      } else {
-        continue;
-      }
-    }
+    if (n < first && !is_installed) continue;
 
     fmt_version = "%15s";
     if (version == current) {
