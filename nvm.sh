@@ -800,6 +800,12 @@ nvm_alias_path() {
 nvm_version_path() {
   local VERSION
   VERSION="${1-}"
+  case "/${VERSION}/" in
+    */../*)
+      nvm_err "invalid version: ${VERSION}"
+      return 3
+    ;;
+  esac
   if [ -z "${VERSION}" ]; then
     nvm_err 'version is required'
     return 3
@@ -1497,6 +1503,15 @@ nvm_alias() {
   if [ -z "${ALIAS}" ]; then
     return 2
   fi
+
+  # slashes are legal (eg `lts/iron`), but a `..` component would read outside
+  # the alias dir; `nvm_make_alias` rejects the same shape on the write side
+  case "/${ALIAS}/" in
+    */../*)
+      nvm_err "invalid alias name: ${ALIAS}"
+      return 3
+    ;;
+  esac
 
   local NVM_ALIAS_PATH
   NVM_ALIAS_PATH="$(nvm_alias_path)/${ALIAS}"
